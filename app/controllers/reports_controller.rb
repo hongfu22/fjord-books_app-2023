@@ -3,12 +3,16 @@
 class ReportsController < ApplicationController
   before_action :set_report, only: %i[edit update destroy]
 
+  SCAN_URL = %r{https?://\S+/reports/(\d+)$}
+
   def index
     @reports = Report.includes(:user).order(id: :desc).page(params[:page])
   end
 
   def show
     @report = Report.find(params[:id])
+    @mentions = @report.mentions.order(:id).page(params[:page])
+    @mentioning = @report.mentioning
   end
 
   # GET /reports/new
@@ -20,20 +24,37 @@ class ReportsController < ApplicationController
 
   def create
     @report = current_user.reports.new(report_params)
+    reports = exploit_id(@report.content)
 
-    if @report.save
+    Report.transaction do
+      raise ActiveRecord::Rollback unless @report.save
+
+      reports.each do |report|
+        @report.mention(report)
+      end
       redirect_to @report, notice: t('controllers.common.notice_create', name: Report.model_name.human)
-    else
-      render :new, status: :unprocessable_entity
     end
+  rescue ActiveRecord::RecordInvalid
+    redirect_to @report, notice: t('controllers.common.notice_error', name: Report.model_name.human)
+  rescue ActiveRecord::RecordNotUnique
+    redirect_to @report, notice: t('controllers.common.notice_error', name: Report.model_name.human)
   end
 
   def update
-    if @report.update(report_params)
+    Report.transaction do
+      raise ActiveRecord::Rollback unless @report.update(report_params)
+
+      @report.delete_all_mention(@report.id)
+      reports = exploit_id(@report.content)
+      reports.each do |report|
+        @report.mention(report)
+      end
       redirect_to @report, notice: t('controllers.common.notice_update', name: Report.model_name.human)
-    else
-      render :edit, status: :unprocessable_entity
     end
+  rescue ActiveRecord::RecordInvalid
+    redirect_to @report, notice: t('controllers.common.notice_error', name: Report.model_name.human)
+  rescue ActiveRecord::RecordNotUnique
+    redirect_to @report, notice: t('controllers.common.notice_error', name: Report.model_name.human)
   end
 
   def destroy
@@ -50,5 +71,14 @@ class ReportsController < ApplicationController
 
   def report_params
     params.require(:report).permit(:title, :content)
+  end
+
+  def exploit_id(content)
+    urls = content.scan(SCAN_URL)
+    reports =
+      urls.flatten.map do |url|
+        Report.find_by(id: url.to_i)
+      end
+    reports.compact
   end
 end
