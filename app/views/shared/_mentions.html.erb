@@ -1,8 +1,8 @@
 <div class="mentions-container">
   <strong><%= t('.mentions_list') %></strong>
-  <% if !(@mentions.empty?) %>
+  <% if @mentioning_reports.present? %>
     <ul>
-      <% @mentions.each do |mention| %>
+      <% @mentioning_reports.each do |mention| %>
         <li>
           <%= link_to mention.title, mention %>
         </li>
@@ -10,17 +10,5 @@
     </ul>
   <% else %>
     <p><%= t('.no_mentions') %></p>
-  <% end %>
-  <strong><%= t('.mentioning_list') %></strong>
-  <% if !(@mentioning.empty?) %>
-    <ul>
-      <% @mentioning.each do |mention| %>
-        <li>
-          <%= link_to mention.title, mention %>
-        </li>
-      <% end %>
-    </ul>
-  <% else %>
-    <p><%= t('.no_mentioning') %></p>
   <% end %>
 </div>

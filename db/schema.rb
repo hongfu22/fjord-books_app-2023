@@ -60,8 +60,8 @@ ActiveRecord::Schema[7.0].define(version: 2023_04_01_005255) do
   end
 
   create_table "mention_correlations", force: :cascade do |t|
-    t.integer "mention_id"
-    t.integer "mentioned_id"
+    t.integer "mention_id", null: false
+    t.integer "mentioned_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["mention_id", "mentioned_id"], name: "index_mention_correlations_on_mention_id_and_mentioned_id", unique: true
@@ -97,5 +97,7 @@ ActiveRecord::Schema[7.0].define(version: 2023_04_01_005255) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "comments", "users"
+  add_foreign_key "mention_correlations", "reports", column: "mention_id"
+  add_foreign_key "mention_correlations", "reports", column: "mentioned_id"
   add_foreign_key "reports", "users"
 end

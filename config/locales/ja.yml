@@ -207,7 +207,6 @@ ja:
       notice_create: "%{name}が作成されました。"
       notice_update: "%{name}が更新されました。"
       notice_destroy: "%{name}が削除されました。"
-      notice_error: "%{name}は保存できませんでした。"
   layouts:
     menu:
       menu: メニュー
@@ -219,9 +218,7 @@ ja:
       no_comments: コメントはまだありません
     mentions:
       mentions_list: この日報を参照している日報の一覧
-      mentioning_list: この日報が参照している日報の一覧
       no_mentions: この日報は参照されていません
-      no_mentioning: この日報は参照していません
   # devise-i18n-viewsをオーバーライド
   devise:
     registrations:

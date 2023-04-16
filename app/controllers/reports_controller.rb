@@ -11,8 +11,7 @@ class ReportsController < ApplicationController
 
   def show
     @report = Report.find(params[:id])
-    @mentions = @report.mentions.order(:id).page(params[:page])
-    @mentioning = @report.mentioning
+    @mentioning_reports = @report.mentioning_reports.order(:id).page(params[:page])
   end
 
   # GET /reports/new
@@ -24,42 +23,25 @@ class ReportsController < ApplicationController
 
   def create
     @report = current_user.reports.new(report_params)
-    reports = exploit_id(@report.content)
-
-    Report.transaction do
-      raise ActiveRecord::Rollback unless @report.save
-
-      reports.each do |report|
-        @report.mention(report)
-      end
+    urls = @report.content.scan(SCAN_URL)
+    if @report.save && @report.create_mentions(@report.id, urls)
       redirect_to @report, notice: t('controllers.common.notice_create', name: Report.model_name.human)
+    else
+      render :new, status: :unprocessable_entity
     end
-  rescue ActiveRecord::RecordInvalid
-    redirect_to @report, notice: t('controllers.common.notice_error', name: Report.model_name.human)
-  rescue ActiveRecord::RecordNotUnique
-    redirect_to @report, notice: t('controllers.common.notice_error', name: Report.model_name.human)
   end
 
   def update
-    Report.transaction do
-      raise ActiveRecord::Rollback unless @report.update(report_params)
-
-      @report.delete_all_mention(@report.id)
-      reports = exploit_id(@report.content)
-      reports.each do |report|
-        @report.mention(report)
-      end
+    urls = @report.content.scan(SCAN_URL)
+    if @report.update(report_params) && @report.delete_all_mention && @report.create_mentions(@report.id, urls)
       redirect_to @report, notice: t('controllers.common.notice_update', name: Report.model_name.human)
+    else
+      render :edit, status: :unprocessable_entity
     end
-  rescue ActiveRecord::RecordInvalid
-    redirect_to @report, notice: t('controllers.common.notice_error', name: Report.model_name.human)
-  rescue ActiveRecord::RecordNotUnique
-    redirect_to @report, notice: t('controllers.common.notice_error', name: Report.model_name.human)
   end
 
   def destroy
     @report.destroy
-
     redirect_to reports_url, notice: t('controllers.common.notice_destroy', name: Report.model_name.human)
   end
 
@@ -71,14 +53,5 @@ class ReportsController < ApplicationController
 
   def report_params
     params.require(:report).permit(:title, :content)
-  end
-
-  def exploit_id(content)
-    urls = content.scan(SCAN_URL)
-    reports =
-      urls.flatten.map do |url|
-        Report.find_by(id: url.to_i)
-      end
-    reports.compact
   end
 end
