@@ -23,20 +23,24 @@ class ReportsController < ApplicationController
 
   def create
     @report = current_user.reports.new(report_params)
-    urls = @report.content.scan(SCAN_URL)
-    if @report.save && @report.create_mentions(@report.id, urls)
+    urls = params[:report][:content].scan(SCAN_URL)
+    ActiveRecord::Base.transaction do
+      unless @report.save && @report.create_mentions(@report.id, urls)
+        render :new, status: :unprocessable_entity
+        raise ActiveRecord::Rollback
+      end
       redirect_to @report, notice: t('controllers.common.notice_create', name: Report.model_name.human)
-    else
-      render :new, status: :unprocessable_entity
     end
   end
 
   def update
-    urls = @report.content.scan(SCAN_URL)
-    if @report.update(report_params) && @report.delete_all_mention && @report.create_mentions(@report.id, urls)
+    urls = params[:report][:content].scan(SCAN_URL)
+    ActiveRecord::Base.transaction do
+      unless @report.delete_all_mention && @report.update(report_params) && @report.create_mentions(@report.id, urls)
+        render :edit, status: :unprocessable_entity
+        raise ActiveRecord::Rollback
+      end
       redirect_to @report, notice: t('controllers.common.notice_update', name: Report.model_name.human)
-    else
-      render :edit, status: :unprocessable_entity
     end
   end
 
